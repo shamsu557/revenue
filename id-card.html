@@ -29,8 +29,8 @@
         }
         
         .kirs-card {
-            width: 324px; /* Standard ID card width (CR80) */
-            height: 204px; /* Standard ID card height (CR80) */
+            width: 324px;
+            height: 204px;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
@@ -39,9 +39,9 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            min-height: 204px; /* Ensure minimum height */
-            max-height: 204px; /* Ensure maximum height */
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            min-height: 204px;
+            max-height: 204px;
+            box-sizing: border-box;
         }
         
         .header {
@@ -67,7 +67,7 @@
             flex-direction: column;
             justify-content: center;
             font-size: 11px;
-            overflow: hidden; /* Prevent content overflow */
+            overflow: hidden;
         }
         
         .footer {
@@ -186,7 +186,6 @@
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="alert alert-info mb-4" id="loading-message">
         <i class="fas fa-info-circle"></i> Loading employee data...
@@ -247,7 +246,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get employee ID from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
         const employeeId = urlParams.get('id');
         
@@ -258,7 +256,6 @@
             return;
         }
         
-        // Fetch employee data
         fetch(`/api/employees/${employeeId}`)
             .then(response => {
                 if (!response.ok) {
@@ -278,16 +275,20 @@
                 // Set employee data
                 document.getElementById('employee-name').textContent = formattedName;
                 document.getElementById('employee-rank').textContent = formattedRank;
-                document.getElementById('employee-psn').textContent = employee.psn_number;
-                document.getElementById('employee-qr').src = employee.qr_code;
+                document.getElementById('employee-psn').textContent = employee.psn_number.trim().toUpperCase();
                 
+                // Set profile picture
                 if (employee.picture) {
                     document.getElementById('employee-image').src = employee.picture;
                 }
                 
+                // Generate QR code for contact page
+                const qrCodeUrl = `/api/qr-code?url=${encodeURIComponent(window.location.origin + '/contact.html?id=' + employee.psn_number)}`;
+                document.getElementById('employee-qr').src = qrCodeUrl;
+                
                 // Set page title
-                document.title = `${employee.first_name} ${employee.surname} - KIRS ID Card`;
-                document.getElementById('page-title').textContent = `${employee.first_name} ${employee.surname} - KIRS ID Card`;
+                document.title = `${formattedName} - KIRS ID Card`;
+                document.getElementById('page-title').textContent = `${formattedName} - KIRS ID Card`;
                 
                 // Show ID card and actions
                 document.getElementById('loading-message').style.display = 'none';
@@ -301,9 +302,8 @@
                 document.getElementById('error-text').textContent = 'Employee not found or error loading data.';
             });
         
-        // Download button
+        // Download button handler
         document.getElementById('download-button').addEventListener('click', function() {
-            // Create a container for both cards to be captured together
             const container = document.createElement('div');
             container.style.display = 'flex';
             container.style.flexDirection = 'column';
@@ -311,38 +311,28 @@
             container.style.background = 'white';
             container.style.padding = '20px';
             
-            // Clone the cards to avoid modifying the original ones
             const frontCard = document.getElementById('front-card').cloneNode(true);
             const backCard = document.getElementById('back-card').cloneNode(true);
             
-            // Add cards to container
             container.appendChild(frontCard);
             container.appendChild(backCard);
-            
-            // Temporarily add to document for capturing
             document.body.appendChild(container);
             
-            // Use html2canvas to convert the container to an image
             html2canvas(container, {
-                scale: 3, // Higher scale for better quality
+                scale: 3,
                 backgroundColor: 'white',
-                useCORS: true, // Enable CORS for images
-                allowTaint: false // Prevent tainted canvas issues
+                useCORS: true,
+                allowTaint: false
             }).then(canvas => {
-                // Convert canvas to data URL
                 const dataURL = canvas.toDataURL('image/png');
-                
-                // Create a temporary link element
                 const link = document.createElement('a');
                 link.href = dataURL;
                 const employeeName = document.getElementById('employee-name').textContent;
                 link.download = `KIRS_ID_Card_${employeeName.replace(/\s+/g, '_')}.png`;
                 
-                // Append to the document, click it, and remove it
                 document.body.appendChild(link);
                 link.click();
                 
-                // Clean up
                 document.body.removeChild(link);
                 document.body.removeChild(container);
             }).catch(error => {
@@ -352,3 +342,5 @@
         });
     });
 </script>
+</body>
+</html>

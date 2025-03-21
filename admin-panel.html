@@ -246,6 +246,12 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h2>View Employees</h2>
                         <div>
+                            <div class="input-group" style="width: 300px;">
+                                <input type="text" class="form-control" id="search-input" placeholder="Search by name or PSN">
+                                <button class="btn btn-outline-secondary" type="button" id="search-button">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
                             <input type="date" id="filter-date" class="form-control d-inline-block" style="width: auto;">
                             <button id="filter-button" class="btn btn-secondary ms-2">Filter by Date</button>
                             <button id="clear-filter-button" class="btn btn-outline-secondary ms-2">Clear Filter</button>
@@ -445,6 +451,84 @@
                 .catch(error => console.error('Error loading users:', error))
                 .finally(() => hideLoading());
         }
+
+        // Search employees
+        document.getElementById('search-button').addEventListener('click', function() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            
+            if (!searchTerm) {
+                loadEmployees();
+                return;
+            }
+            
+            fetch('/api/employees')
+                .then(response => response.json())
+                .then(data => {
+                    const filteredEmployees = data.filter(employee => 
+                        employee.first_name.toLowerCase().includes(searchTerm) ||
+                        employee.surname.toLowerCase().includes(searchTerm) ||
+                        (employee.other_name && employee.other_name.toLowerCase().includes(searchTerm)) ||
+                        employee.psn_number.toLowerCase().includes(searchTerm) ||
+                        (employee.phone_number && employee.phone_number.toLowerCase().includes(searchTerm))
+                    );
+                    
+                    const container = document.getElementById('employees-container');
+                    container.innerHTML = '';
+                    
+                    if (filteredEmployees.length === 0) {
+                        container.innerHTML = '<div class="col-12"><div class="alert alert-info">No employees found matching your search.</div></div>';
+                        return;
+                    }
+                    
+                    filteredEmployees.forEach(employee => {
+                        const card = document.createElement('div');
+                        card.className = 'col-md-4 mb-4';
+                        card.innerHTML = `
+                            <div class="card employee-card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="flex-shrink-0">
+                                            <img src="${employee.picture || 'https://via.placeholder.com/50'}" alt="Profile" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="card-title mb-0">${employee.first_name} ${employee.surname}</h5>
+                                            <small>${employee.rank}</small>
+                                        </div>
+                                    </div>
+                                    <p class="card-text">
+                                        <strong>PSN Number:</strong> ${employee.psn_number}<br>
+                                        <strong>Phone Number:</strong> ${employee.phone_number || 'N/A'}<br>
+                                        <strong>Registered By:</strong> ${employee.registered_by}<br>
+                                        <strong>Registration Date:</strong> ${new Date(employee.registration_date).toLocaleDateString()}
+                                    </p>
+                                    <div class="d-flex justify-content-between">
+                                        <button class="btn btn-sm btn-primary edit-employee" data-id="${employee.id}">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                        <a href="id-card.html?id=${employee.id}" class="btn btn-sm btn-success" target="_blank">
+                                            <i class="bi bi-card-heading"></i> ID Card
+                                        </a>
+                                        <a href="contact.html?id=${employee.psn_number}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="bi bi-qr-code"></i> Contact
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                    
+                    // Add event listeners to edit buttons
+                    document.querySelectorAll('.edit-employee').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const employeeId = this.getAttribute('data-id');
+                            openEditModal(employeeId);
+                        });
+                    });
+                })
+                .catch(error => console.error('Error searching employees:', error));
+        });
+        
         
        // Load admins
 function loadAdmins() {
@@ -511,56 +595,68 @@ function deleteAdmin(adminId) {
 }
 
         // Load employees
-        function loadEmployees(date = null) {
-            showLoading();
-            let url = '/api/employees';
-            if (date) {
-                url += `?date=${date}`;
+        function loadEmployees(date = null, search = null) {
+    showLoading();
+    let url = '/api/employees';
+    let params = new URLSearchParams();
+
+    if (date) {
+        params.append('date', date);
+    }
+    if (search) {
+        params.append('search', search);
+    }
+
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            // Update total employees count
+            const totalCountElement = document.getElementById('total-employees-count');
+            if (totalCountElement) {
+                totalCountElement.textContent = data.length;
             }
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    // Update total employees count
-                    document.getElementById('total-employees-count').textContent = data.length;
-                    
-                    const container = document.getElementById('employees-container');
-                    container.innerHTML = '';
-                    
-                    if (data.length === 0) {
-                        container.innerHTML = '<div class="col-12"><div class="alert alert-info">No employees found.</div></div>';
-                        return;
-                    }
-                    
-                    data.forEach(employee => {
-                        const card = document.createElement('div');
-                        card.className = 'col-md-4 mb-4';
-                        card.innerHTML = `
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">${employee.first_name} ${employee.surname}</h5>
-                                    <p class="card-text">
-                                        <strong>Rank:</strong> ${employee.rank}<br>
-                                        <strong>PSN Number:</strong> ${employee.psn_number}<br>
-                                        <strong>Registered By:</strong> ${employee.registered_by}<br>
-                                        <strong>Registration Date:</strong> ${new Date(employee.registration_date).toLocaleDateString()}
-                                    </p>
-                                    <a href="contact.html?id=${employee.psn_number}" class="btn btn-sm btn-primary" target="_blank">
-                                        <i class="bi bi-qr-code"></i> View Contact
-                                    </a>
-                                    <a href="id-card.html?id=${employee.id}" class="btn btn-sm btn-success" target="_blank">
-                                        <i class="bi bi-card-heading"></i> View ID Card
-                                    </a>
-                                </div>
-                            </div>
-                        `;
-                        container.appendChild(card);
-                    });
-                })
-                .catch(error => console.error('Error loading employees:', error))
-                .finally(() => hideLoading());
-        }
-        
+
+            const container = document.getElementById('employees-container');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="col-12"><div class="alert alert-info">No employees found.</div></div>';
+                return;
+            }
+
+            data.forEach(employee => {
+                const card = document.createElement('div');
+                card.className = 'col-md-4 mb-4';
+                card.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${employee.first_name} ${employee.surname}</h5>
+                            <p class="card-text">
+                                <strong>Rank:</strong> ${employee.rank}<br>
+                                <strong>PSN Number:</strong> ${employee.psn_number}<br>
+                                <strong>Registered By:</strong> ${employee.registered_by}<br>
+                                <strong>Registration Date:</strong> ${new Date(employee.registration_date).toLocaleDateString()}
+                            </p>
+                            <a href="contact.html?id=${employee.psn_number}" class="btn btn-sm btn-primary" target="_blank">
+                                <i class="bi bi-qr-code"></i> View Contact
+                            </a>
+                            <a href="id-card.html?id=${employee.id}" class="btn btn-sm btn-success" target="_blank">
+                                <i class="bi bi-card-heading"></i> View ID Card
+                            </a>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        })
+        .catch(error => console.error('Error loading employees:', error))
+        .finally(() => hideLoading());
+}
+
         // Delete user
         function deleteUser(userId) {
             showLoading();
