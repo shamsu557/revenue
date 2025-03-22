@@ -452,8 +452,8 @@
                 .finally(() => hideLoading());
         }
 
-        // Search employees
-        document.getElementById('search-button').addEventListener('click', function() {
+       // Search employees
+       document.getElementById('search-button').addEventListener('click', function() {
             const searchTerm = document.getElementById('search-input').value.toLowerCase();
             
             if (!searchTerm) {
@@ -491,7 +491,11 @@
                                             <img src="${employee.picture || 'https://via.placeholder.com/50'}" alt="Profile" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
                                         </div>
                                         <div class="flex-grow-1 ms-3">
-                                            <h5 class="card-title mb-0">${employee.first_name} ${employee.surname}</h5>
+                                            <h5 class="card-title mb-0">
+                                                ${employee.first_name} 
+                                                ${employee.other_name ? employee.other_name + ' ' : ''}
+                                                ${employee.surname}
+                                            </h5>
                                             <small>${employee.rank}</small>
                                         </div>
                                     </div>
@@ -528,8 +532,7 @@
                 })
                 .catch(error => console.error('Error searching employees:', error));
         });
-        
-        
+
        // Load admins
 function loadAdmins() {
     showLoading();
@@ -594,8 +597,8 @@ function deleteAdmin(adminId) {
         .finally(() => hideLoading());
 }
 
-        // Load employees
-        function loadEmployees(date = null, search = null) {
+       // Load employees
+function loadEmployees(date = null, search = null) {
     showLoading();
     let url = '/api/employees';
     let params = new URLSearchParams();
@@ -629,12 +632,14 @@ function deleteAdmin(adminId) {
             }
 
             data.forEach(employee => {
+                const fullName = `${employee.first_name} ${employee.other_name ? employee.other_name + ' ' : ''}${employee.surname}`.trim();
+                
                 const card = document.createElement('div');
                 card.className = 'col-md-4 mb-4';
                 card.innerHTML = `
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">${employee.first_name} ${employee.surname}</h5>
+                            <h5 class="card-title">${fullName}</h5>
                             <p class="card-text">
                                 <strong>Rank:</strong> ${employee.rank}<br>
                                 <strong>PSN Number:</strong> ${employee.psn_number}<br>

@@ -360,58 +360,92 @@
         });
         
         // Register employee form submission
-        document.getElementById('employee-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    const formData = new FormData();
-    formData.append('firstName', document.getElementById('firstName').value);
-    formData.append('surname', document.getElementById('surname').value);
-    formData.append('otherName', document.getElementById('otherName').value);
-    formData.append('rank', document.getElementById('rank').value);
-    formData.append('psnNumber', document.getElementById('psnNumber').value);
-    formData.append('phoneNumber', document.getElementById('phoneNumber').value);
-
-    // Append the profile picture file (if selected)
-    const profilePicInput = document.getElementById('profilePic');
-    if (profilePicInput.files.length > 0) {
-        formData.append('picture', profilePicInput.files[0]);
-    }
-
-    fetch('/api/employees', {
-        method: 'POST',
-        body: formData,  // No need for `headers`, the browser sets them automatically
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.id) {
-                document.getElementById('success-message').textContent = 'Employee registered successfully!';
-                document.getElementById('success-message').style.display = 'block';
-                document.getElementById('error-message').style.display = 'none';
-
-                document.getElementById('employee-form').reset();
-                document.getElementById('profile-pic-preview').src = 'https://via.placeholder.com/150';
-
-                document.getElementById('qr-code-card').style.display = 'block';
-                document.getElementById('qr-code-image').src = data.qr_code;
-                document.getElementById('employee-name').textContent = `${data.first_name} ${data.surname}`;
-                document.getElementById('employee-psn').textContent = data.psn_number;
-                document.getElementById('employee-rank').textContent = data.rank;
-                document.getElementById('view-id-card').href = `id-card.html?id=${data.id}`;
-                document.getElementById('view-contact').href = `contact.html?id=${data.psn_number}`;
+        document.getElementById('employee-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const firstName = document.getElementById('firstName').value;
+            const surname = document.getElementById('surname').value;
+            const otherName = document.getElementById('otherName').value;
+            const rank = document.getElementById('rank').value;
+            const psnNumber = document.getElementById('psnNumber').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            
+            // Get profile picture if uploaded
+            let picture = '';
+            const profilePicInput = document.getElementById('profilePic');
+            if (profilePicInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    picture = e.target.result;
+                    registerEmployee(firstName, surname, otherName, rank, psnNumber, phoneNumber, picture);
+                };
+                reader.readAsDataURL(profilePicInput.files[0]);
             } else {
-                document.getElementById('error-message').textContent = data.error || 'Error registering employee';
-                document.getElementById('error-message').style.display = 'block';
-                document.getElementById('success-message').style.display = 'none';
+                registerEmployee(firstName, surname, otherName, rank, psnNumber, phoneNumber, picture);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('error-message').textContent = 'An error occurred. Please try again.';
-            document.getElementById('error-message').style.display = 'block';
-            document.getElementById('success-message').style.display = 'none';
         });
-});
-
+        
+        // Register employee function
+        function registerEmployee(firstName, surname, otherName, rank, psnNumber, phoneNumber, picture) {
+            fetch('/api/employees', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    firstName,
+                    surname,
+                    otherName,
+                    rank,
+                    psnNumber,
+                    phoneNumber,
+                    picture
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id) {
+                        // Show success message
+                        const successMessage = document.getElementById('success-message');
+                        successMessage.textContent = 'Employee registered successfully!';
+                        successMessage.style.display = 'block';
+                        document.getElementById('error-message').style.display = 'none';
+                        
+                        // Reset form
+                        document.getElementById('employee-form').reset();
+                        document.getElementById('profile-pic-preview').src = 'https://via.placeholder.com/150';
+                        
+                        // Show QR code
+                        document.getElementById('qr-code-card').style.display = 'block';
+                        document.getElementById('qr-code-image').src = data.qr_code;
+                        document.getElementById('employee-name').textContent = `${data.first_name} ${data.surname}`;
+                        document.getElementById('employee-psn').textContent = data.psn_number;
+                        document.getElementById('employee-rank').textContent = data.rank;
+                        document.getElementById('view-id-card').href = `id-card.html?id=${data.id}`;
+                        document.getElementById('view-contact').href = `contact.html?id=${data.psn_number}`;
+                        
+                        // Reload employees list if on that tab
+                        if (document.getElementById('view-employees').classList.contains('active')) {
+                            loadEmployees();
+                        }
+                    } else {
+                        // Show error message
+                        const errorMessage = document.getElementById('error-message');
+                        errorMessage.textContent = data.error || 'Error registering employee';
+                        errorMessage.style.display = 'block';
+                        document.getElementById('success-message').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorMessage = document.getElementById('error-message');
+                    errorMessage.textContent = 'An error occurred. Please try again.';
+                    errorMessage.style.display = 'block';
+                    document.getElementById('success-message').style.display = 'none';
+                });
+        }
+        
+        // Load employees
         // Load employees
 function loadEmployees() {
     fetch('/api/employees')
@@ -429,7 +463,6 @@ function loadEmployees() {
             }
 
             data.forEach(employee => {
-                const otherName = employee.other_name ? ` ${employee.other_name}` : '';
                 const card = document.createElement('div');
                 card.className = 'col-md-4 mb-4';
                 card.innerHTML = `
@@ -440,7 +473,7 @@ function loadEmployees() {
                                     <img src="${employee.picture || 'https://via.placeholder.com/50'}" alt="Profile" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
                                 </div>
                                 <div class="flex-grow-1 ms-3">
-                                    <h5 class="card-title mb-0">${employee.first_name}${otherName} ${employee.surname}</h5>
+                                    <h5 class="card-title mb-0">${employee.first_name} ${employee.surname}</h5>
                                     <small>${employee.rank}</small>
                                 </div>
                             </div>
@@ -477,160 +510,180 @@ function loadEmployees() {
         })
         .catch(error => console.error('Error loading employees:', error));
 }
-       // Search employees
-document.getElementById('search-button').addEventListener('click', function() {
-    const searchTerm = document.getElementById('search-input').value.toLowerCase();
-    
-    if (!searchTerm) {
-        loadEmployees();
-        return;
-    }
-    
-    fetch('/api/employees')
-        .then(response => response.json())
-        .then(data => {
-            const filteredEmployees = data.filter(employee => 
-                employee.first_name.toLowerCase().includes(searchTerm) ||
-                employee.surname.toLowerCase().includes(searchTerm) ||
-                (employee.other_name && employee.other_name.toLowerCase().includes(searchTerm)) ||
-                employee.psn_number.toLowerCase().includes(searchTerm) ||
-                (employee.phone_number && employee.phone_number.toLowerCase().includes(searchTerm))
-            );
+
+        // Search employees
+        document.getElementById('search-button').addEventListener('click', function() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
             
-            const container = document.getElementById('employees-container');
-            container.innerHTML = '';
-            
-            if (filteredEmployees.length === 0) {
-                container.innerHTML = '<div class="col-12"><div class="alert alert-info">No employees found matching your search.</div></div>';
+            if (!searchTerm) {
+                loadEmployees();
                 return;
             }
             
-            filteredEmployees.forEach(employee => {
-                const otherName = employee.other_name ? ` ${employee.other_name}` : '';
-                const card = document.createElement('div');
-                card.className = 'col-md-4 mb-4';
-                card.innerHTML = `
-                    <div class="card employee-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="flex-shrink-0">
-                                    <img src="${employee.picture || 'https://via.placeholder.com/50'}" alt="Profile" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <h5 class="card-title mb-0">${employee.first_name}${otherName} ${employee.surname}</h5>
-                                    <small>${employee.rank}</small>
+            fetch('/api/employees')
+                .then(response => response.json())
+                .then(data => {
+                    const filteredEmployees = data.filter(employee => 
+                        employee.first_name.toLowerCase().includes(searchTerm) ||
+                        employee.surname.toLowerCase().includes(searchTerm) ||
+                        (employee.other_name && employee.other_name.toLowerCase().includes(searchTerm)) ||
+                        employee.psn_number.toLowerCase().includes(searchTerm) ||
+                        (employee.phone_number && employee.phone_number.toLowerCase().includes(searchTerm))
+                    );
+                    
+                    const container = document.getElementById('employees-container');
+                    container.innerHTML = '';
+                    
+                    if (filteredEmployees.length === 0) {
+                        container.innerHTML = '<div class="col-12"><div class="alert alert-info">No employees found matching your search.</div></div>';
+                        return;
+                    }
+                    
+                    filteredEmployees.forEach(employee => {
+                        const card = document.createElement('div');
+                        card.className = 'col-md-4 mb-4';
+                        card.innerHTML = `
+                            <div class="card employee-card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="flex-shrink-0">
+                                            <img src="${employee.picture || 'https://via.placeholder.com/50'}" alt="Profile" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="card-title mb-0">${employee.first_name} ${employee.surname}</h5>
+                                            <small>${employee.rank}</small>
+                                        </div>
+                                    </div>
+                                    <p class="card-text">
+                                        <strong>PSN Number:</strong> ${employee.psn_number}<br>
+                                        <strong>Phone Number:</strong> ${employee.phone_number || 'N/A'}<br>
+                                        <strong>Registered By:</strong> ${employee.registered_by}<br>
+                                        <strong>Registration Date:</strong> ${new Date(employee.registration_date).toLocaleDateString()}
+                                    </p>
+                                    <div class="d-flex justify-content-between">
+                                        <button class="btn btn-sm btn-primary edit-employee" data-id="${employee.id}">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                        <a href="id-card.html?id=${employee.id}" class="btn btn-sm btn-success" target="_blank">
+                                            <i class="bi bi-card-heading"></i> ID Card
+                                        </a>
+                                        <a href="contact.html?id=${employee.psn_number}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="bi bi-qr-code"></i> Contact
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-                            <p class="card-text">
-                                <strong>PSN Number:</strong> ${employee.psn_number}<br>
-                                <strong>Phone Number:</strong> ${employee.phone_number || 'N/A'}<br>
-                                <strong>Registered By:</strong> ${employee.registered_by}<br>
-                                <strong>Registration Date:</strong> ${new Date(employee.registration_date).toLocaleDateString()}
-                            </p>
-                            <div class="d-flex justify-content-between">
-                                <button class="btn btn-sm btn-primary edit-employee" data-id="${employee.id}">
-                                    <i class="bi bi-pencil"></i> Edit
-                                </button>
-                                <a href="id-card.html?id=${employee.id}" class="btn btn-sm btn-success" target="_blank">
-                                    <i class="bi bi-card-heading"></i> ID Card
-                                </a>
-                                <a href="contact.html?id=${employee.psn_number}" class="btn btn-sm btn-info" target="_blank">
-                                    <i class="bi bi-qr-code"></i> Contact
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-            
-            // Add event listeners to edit buttons
-            document.querySelectorAll('.edit-employee').forEach(button => {
-                button.addEventListener('click', function() {
-                    const employeeId = this.getAttribute('data-id');
-                    openEditModal(employeeId);
-                });
-            });
-        })
-        .catch(error => console.error('Error searching employees:', error));
-});
-        // Open edit modal
-function openEditModal(employeeId) {
-    fetch(`/api/employees/${employeeId}`)
-        .then(response => response.json())
-        .then(employee => {
-            document.getElementById('edit-employee-id').value = employee.id;
-            document.getElementById('edit-firstName').value = employee.first_name;
-            document.getElementById('edit-surname').value = employee.surname;
-            document.getElementById('edit-otherName').value = employee.other_name || '';
-            document.getElementById('edit-rank').value = employee.rank;
-            document.getElementById('edit-psnNumber').value = employee.psn_number;
-            document.getElementById('edit-phoneNumber').value = employee.phone_number || '';
-
-            if (employee.picture) {
-                document.getElementById('edit-profile-pic-preview').src = `/uploads/${employee.picture}`;
-            } else {
-                document.getElementById('edit-profile-pic-preview').src = 'https://via.placeholder.com/150';
-            }
-
-            // Show modal
-            const editModal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
-            editModal.show();
-        })
-        .catch(error => console.error('Error loading employee details:', error));
-}
-
-// Save employee changes
-document.getElementById('save-employee-button').addEventListener('click', function () {
-    const employeeId = document.getElementById('edit-employee-id').value;
-    const firstName = document.getElementById('edit-firstName').value;
-    const surname = document.getElementById('edit-surname').value;
-    const otherName = document.getElementById('edit-otherName').value;
-    const rank = document.getElementById('edit-rank').value;
-    const psnNumber = document.getElementById('edit-psnNumber').value;
-    const phoneNumber = document.getElementById('edit-phoneNumber').value;
-    const profilePicInput = document.getElementById('edit-profilePic');
-
-    // Create FormData object
-    const formData = new FormData();
-    formData.append('firstName', firstName);
-    formData.append('surname', surname);
-    formData.append('otherName', otherName);
-    formData.append('rank', rank);
-    formData.append('psnNumber', psnNumber);
-    formData.append('phoneNumber', phoneNumber);
-
-    if (profilePicInput.files.length > 0) {
-        formData.append('picture', profilePicInput.files[0]); // Attach the file
-    }
-
-    fetch(`/api/employees/${employeeId}`, {
-        method: 'PUT',
-        body: formData, // Send as multipart/form-data
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.id) {
-                // Close modal
-                bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal')).hide();
-
-                // Reload employees
-                loadEmployees();
-            } else {
-                // Show error message
-                const errorMessage = document.getElementById('edit-error-message');
-                errorMessage.textContent = data.error || 'Error updating employee';
-                errorMessage.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            const errorMessage = document.getElementById('edit-error-message');
-            errorMessage.textContent = 'An error occurred. Please try again.';
-            errorMessage.style.display = 'block';
+                        `;
+                        container.appendChild(card);
+                    });
+                    
+                    // Add event listeners to edit buttons
+                    document.querySelectorAll('.edit-employee').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const employeeId = this.getAttribute('data-id');
+                            openEditModal(employeeId);
+                        });
+                    });
+                })
+                .catch(error => console.error('Error searching employees:', error));
         });
-});
-
+        
+        // Open edit modal
+        function openEditModal(employeeId) {
+            fetch(`/api/employees/${employeeId}`)
+                .then(response => response.json())
+                .then(employee => {
+                    document.getElementById('edit-employee-id').value = employee.id;
+                    document.getElementById('edit-firstName').value = employee.first_name;
+                    document.getElementById('edit-surname').value = employee.surname;
+                    document.getElementById('edit-otherName').value = employee.other_name || '';
+                    document.getElementById('edit-rank').value = employee.rank;
+                    document.getElementById('edit-psnNumber').value = employee.psn_number;
+                    document.getElementById('edit-phoneNumber').value = employee.phone_number || '';
+                    
+                    if (employee.picture) {
+                        document.getElementById('edit-profile-pic-preview').src = employee.picture;
+                    } else {
+                        document.getElementById('edit-profile-pic-preview').src = 'https://via.placeholder.com/150';
+                    }
+                    
+                    // Show modal
+                    const editModal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
+                    editModal.show();
+                })
+                .catch(error => console.error('Error loading employee details:', error));
+        }
+        
+        // Save employee changes
+        document.getElementById('save-employee-button').addEventListener('click', function() {
+            const employeeId = document.getElementById('edit-employee-id').value;
+            const firstName = document.getElementById('edit-firstName').value;
+            const surname = document.getElementById('edit-surname').value;
+            const otherName = document.getElementById('edit-otherName').value;
+            const rank = document.getElementById('edit-rank').value;
+            const psnNumber = document.getElementById('edit-psnNumber').value;
+            const phoneNumber = document.getElementById('edit-phoneNumber').value;
+            
+            // Get profile picture if uploaded
+            let picture = '';
+            const profilePicInput = document.getElementById('edit-profilePic');
+            
+            if (profilePicInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    picture = e.target.result;
+                    updateEmployee(employeeId, firstName, surname, otherName, rank, psnNumber, phoneNumber, picture);
+                };
+                reader.readAsDataURL(profilePicInput.files[0]);
+            } else {
+                updateEmployee(employeeId, firstName, surname, otherName, rank, psnNumber, phoneNumber, picture);
+            }
+        });
+        
+        // Update employee function
+        function updateEmployee(employeeId, firstName, surname, otherName, rank, psnNumber, phoneNumber, picture) {
+            const data = {
+                firstName,
+                surname,
+                otherName,
+                rank,
+                psnNumber,
+                phoneNumber
+            };
+            
+            if (picture) {
+                data.picture = picture;
+            }
+            
+            fetch(`/api/employees/${employeeId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id) {
+                        // Close modal
+                        bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal')).hide();
+                        
+                        // Reload employees
+                        loadEmployees();
+                    } else {
+                        // Show error message
+                        const errorMessage = document.getElementById('edit-error-message');
+                        errorMessage.textContent = data.error || 'Error updating employee';
+                        errorMessage.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorMessage = document.getElementById('edit-error-message');
+                    errorMessage.textContent = 'An error occurred. Please try again.';
+                    errorMessage.style.display = 'block';
+                });
+        }
         document.getElementById('filter-button').addEventListener('click', function() {
     const date = document.getElementById('filter-date').value;
     const search = document.getElementById('search-input').value.trim();

@@ -4,13 +4,13 @@ const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
-const qrcode = require('qrcode');
 const fs = require('fs');
 const util = require('util');
 const multer = require('multer');
 const app = express();
 const sharp = require('sharp');
 const PORT = process.env.PORT || 3000;
+const qrcode = require('qrcode');
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -23,19 +23,6 @@ app.use(session({
   cookie: { maxAge: 3600000 } // 1 hour
 }));
 
-// Use project directory for storing files
-const uploadDir = __dirname; // Saves in the same folder as HTML files
-
-// Multer setup for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir); // Save in project directory
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  }
-});
-const upload = multer({ storage });
 
 // Database connection
 const db = mysql.createConnection({
@@ -441,63 +428,76 @@ app.get('/api/admins', isAdmin, (req, res) => {
   });
 });
 
+// Multer setup for file uploads (store in the same directory as HTML, CSS, and JS)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, __dirname); // Save files in the same directory as other files
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+const upload = multer({ storage });
+
 // Register Employee Route
 app.post('/api/employees', isAuthenticated, upload.single('picture'), (req, res) => {
   const { firstName, surname, otherName, rank, psnNumber, phoneNumber } = req.body;
-  const pictureFilename = req.file ? req.file.filename : '';
+  const pictureFilename = req.file ? req.file.filename : ''; // Store picture filename directly in the same directory
 
   if (!firstName || !surname || !rank || !psnNumber || !phoneNumber) {
-      return res.status(400).json({ error: 'First name, surname, rank, PSN number, and phone number are required' });
+    return res.status(400).json({ error: 'First name, surname, rank, PSN number, and phone number are required' });
+  }
+
+  if (!req.session || !req.session.user || !req.session.user.username) {
+    return res.status(401).json({ error: 'Unauthorized: User session not found' });
   }
 
   // Check if employee already exists
   db.query('SELECT * FROM employees WHERE phone_number = ? OR psn_number = ?', [phoneNumber, psnNumber], (err, results) => {
+    if (err) {
+      console.error('Error checking for existing employee:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    if (results.length > 0) {
+      return res.status(409).json({ error: 'An employee with this phone number or PSN number already exists' });
+    }
+
+    // Generate QR Code
+    const contactPageUrl = `contact.html?id=${psnNumber}`; // Reference contact page directly
+    const qrCodeFilename = `${Date.now()}-qr.png`;
+
+    qrcode.toFile(path.join(__dirname, qrCodeFilename), contactPageUrl, (err) => {
       if (err) {
-          console.error('Error checking for existing employee:', err);
+        console.error('Error generating QR code:', err);
+        return res.status(500).json({ error: 'Error generating QR code' });
+      }
+
+      // Save Employee Record
+      const employee = {
+        first_name: firstName,
+        surname,
+        other_name: otherName || null,
+        rank,
+        picture: pictureFilename, // Store picture filename
+        psn_number: psnNumber,
+        phone_number: phoneNumber,
+        qr_code: qrCodeFilename, // Store QR code filename
+        registered_by: req.session.user.username
+      };
+
+      db.query('INSERT INTO employees SET ?', employee, (err, result) => {
+        if (err) {
+          console.error('Error registering employee:', err);
           return res.status(500).json({ error: 'Internal server error' });
-      }
-      if (results.length > 0) {
-          return res.status(409).json({ error: 'An employee with this phone number or PSN number already exists' });
-      }
-
-      // Generate QR Code
-      const contactPageUrl = `${req.protocol}://${req.get('host')}/contact.html?id=${psnNumber}`;
-      const qrCodeFilename = `${Date.now()}-qr.png`;
-      const qrCodeFilePath = path.join(uploadDir, qrCodeFilename);
-
-      qrcode.toFile(qrCodeFilePath, contactPageUrl, (err) => {
-          if (err) {
-              console.error('Error generating QR code:', err);
-              return res.status(500).json({ error: 'Error generating QR code' });
-          }
-
-          // Save Employee Record
-          const employee = {
-              first_name: firstName,
-              surname,
-              other_name: otherName || null,
-              rank,
-              picture: pictureFilename, // Store the filename of the uploaded picture
-              psn_number: psnNumber,
-              phone_number: phoneNumber,
-              qr_code: qrCodeFilename, // Store the filename of the QR code
-              registered_by: req.session.user.username
-          };
-
-          db.query('INSERT INTO employees SET ?', employee, (err, result) => {
-              if (err) {
-                  console.error('Error registering employee:', err);
-                  return res.status(500).json({ error: 'Internal server error' });
-              }
-              res.status(201).json({
-                  id: result.insertId,
-                  ...employee
-              });
-          });
+        }
+        res.status(201).json({
+          id: result.insertId,
+          ...employee
+        });
       });
+    });
   });
 });
-
 // Get all employees
 app.get('/api/employees', isAdmin, (req, res) => {
     const { date } = req.query;
@@ -547,62 +547,71 @@ app.get('/api/employees/:identifier', (req, res) => {
 app.put('/api/employees/:id', isAuthenticated, upload.single('picture'), (req, res) => {
   const employeeId = req.params.id;
   const { firstName, surname, otherName, rank, psnNumber, phoneNumber } = req.body;
-  const pictureFilename = req.file ? req.file.filename : null;
-  
+  const pictureFilename = req.file ? req.file.filename : null; // Get the new picture filename
+
   if (!firstName || !surname || !rank || !psnNumber || !phoneNumber) {
     return res.status(400).json({ error: 'First name, surname, rank, PSN number, and phone number are required' });
   }
-  
+
   // Check if another employee has this phone number
   db.query('SELECT * FROM employees WHERE phone_number = ? AND id != ?', [phoneNumber, employeeId], (err, results) => {
     if (err) {
       console.error('Error checking for existing employee by phone:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
-    
+
     if (results.length > 0) {
       return res.status(409).json({ error: 'Another employee with this phone number already exists' });
     }
-    
+
     // Check if another employee has this PSN number
     db.query('SELECT * FROM employees WHERE psn_number = ? AND id != ?', [psnNumber, employeeId], (err, results) => {
       if (err) {
         console.error('Error checking for existing employee by PSN:', err);
         return res.status(500).json({ error: 'Internal server error' });
       }
-      
+
       if (results.length > 0) {
         return res.status(409).json({ error: 'Another employee with this PSN number already exists' });
       }
-      
-      const employee = {
-        first_name: firstName,
-        surname,
-        other_name: otherName || null,
-        rank,
-        psn_number: psnNumber,
-        phone_number: phoneNumber
-      };
-      
-      if (pictureFilename) {
-        employee.picture = pictureFilename;
-      }
-      
-      db.query('UPDATE employees SET ? WHERE id = ?', [employee, employeeId], (err, result) => {
+
+      // Fetch existing employee data
+      db.query('SELECT picture FROM employees WHERE id = ?', [employeeId], (err, result) => {
         if (err) {
-          console.error('Error updating employee:', err);
+          console.error('Error retrieving existing employee picture:', err);
           return res.status(500).json({ error: 'Internal server error' });
         }
-        
-        if (result.affectedRows === 0) {
-          return res.status(404).json({ error: 'Employee not found' });
-        }
-        
-        res.json({ id: employeeId, ...employee });
+
+        const existingPicture = result[0]?.picture; // Get the existing picture filename
+
+        const employee = {
+          first_name: firstName,
+          surname,
+          other_name: otherName || null,
+          rank,
+          psn_number: psnNumber,
+          phone_number: phoneNumber,
+          picture: pictureFilename || existingPicture // Keep old picture if no new one is uploaded
+        };
+
+        // Update employee data in the database
+        db.query('UPDATE employees SET ? WHERE id = ?', [employee, employeeId], (err, result) => {
+          if (err) {
+            console.error('Error updating employee:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Employee not found' });
+          }
+
+          res.json({ id: employeeId, ...employee });
+        });
       });
     });
   });
 });
+
 
 // Delete employee
 app.delete('/api/employees/:id', isAuthenticated, (req, res) => {
