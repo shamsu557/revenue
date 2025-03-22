@@ -110,10 +110,10 @@
       <div class="col-12 col-md-8 light-background">
         <div class="row mb-3">
           <div class="col-12 d-flex align-items-start">
-            <i class="fas fa-id-card mr-3"></i>
+            <i class="fas fa-phone-alt mr-3"></i> <!-- Phone icon -->
             <div>
-              <p class="mb-1"><strong id="employee-psn-display">PSN12345</strong></p>
-              <p class="mb-3 text-muted">PSN Number</p>
+              <p class="mb-1"><strong id="employee-psn-display">080309930030</strong></p>
+              <p class="mb-3 text-muted">Tel</p>
             </div>
           </div>
         </div>
@@ -151,7 +151,7 @@
         </div>
         
         <div class="back-button">
-          <a href="index.html" class="btn btn-outline-success">
+          <a href="https://www.kirs.gov.ng" class="btn btn-outline-success">
             <i class="fas fa-home"></i> Back to Home
           </a>
         </div>
@@ -172,60 +172,60 @@
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Get employee ID from URL parameter
-      const urlParams = new URLSearchParams(window.location.search);
-      const employeeId = urlParams.get('id');
-      
-      if (!employeeId) {
+  <script>document.addEventListener('DOMContentLoaded', function() {
+    // Get employee ID from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const employeeId = urlParams.get('id');
+
+    if (!employeeId) {
         document.getElementById('loading-message').style.display = 'none';
         document.getElementById('error-message').style.display = 'block';
         document.getElementById('error-text').textContent = 'No employee ID provided.';
         return;
-      }
-      
-      // Fetch employee data
-      fetch(`/api/employees/${employeeId}`)
+    }
+
+    // Fetch employee data
+    fetch(`/api/employees/${employeeId}`)
         .then(response => {
-          if (!response.ok) {
-            throw new Error('Employee not found');
-          }
-          return response.json();
+            if (!response.ok) {
+                throw new Error('Employee not found');
+            }
+            return response.json();
         })
         .then(employee => {
-          // Format employee name and rank
-          const formattedName = `${employee.first_name} ${employee.surname}`.trim().toUpperCase();
-          const formattedRank = employee.rank
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ')
-            .trim();
-          
-          // Set employee data
-          document.getElementById('employee-name').textContent = formattedName;
-          document.getElementById('employee-rank').textContent = formattedRank;
-          document.getElementById('employee-psn-display').textContent = employee.psn_number;
-          document.getElementById('psn-text').textContent = employee.psn_number;
-          
-          if (employee.picture) {
-            document.getElementById('employee-image').src = employee.picture;
-          }
-          
-          // Set page title
-          document.title = `${employee.first_name} ${employee.surname} - KIRS Contact`;
-          
-          // Show contact container
-          document.getElementById('loading-message').style.display = 'none';
-          document.getElementById('contact-container').style.display = 'block';
+            // Format employee name and rank
+            const formattedName = `${employee.first_name} ${employee.surname}`.trim().toUpperCase();
+            const formattedRank = employee.rank
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ')
+                .trim();
+
+            // Set employee data
+            document.getElementById('employee-name').textContent = formattedName;
+            document.getElementById('employee-rank').textContent = formattedRank;
+            document.getElementById('employee-psn-display').textContent = employee.phone_number || 'N/A'; // Display phone number instead of PSN
+            document.getElementById('psn-text').textContent = employee.psn_number.toUpperCase();// Keep the PSN number elsewhere
+
+            if (employee.picture) {
+                document.getElementById('employee-image').src = employee.picture;
+            }
+
+            // Set page title
+            document.title = `${employee.first_name} ${employee.surname} - KIRS Contact`;
+
+            // Show contact container
+            document.getElementById('loading-message').style.display = 'none';
+            document.getElementById('contact-container').style.display = 'block';
         })
         .catch(error => {
-          console.error('Error:', error);
-          document.getElementById('loading-message').style.display = 'none';
-          document.getElementById('error-message').style.display = 'block';
-          document.getElementById('error-text').textContent = 'Employee not found or error loading data.';
+            console.error('Error:', error);
+            document.getElementById('loading-message').style.display = 'none';
+            document.getElementById('error-message').style.display = 'block';
+            document.getElementById('error-text').textContent = 'Employee not found or error loading data.';
         });
-    });
+});
+
   </script>
 </body>
 </html>
