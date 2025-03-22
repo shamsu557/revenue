@@ -220,7 +220,7 @@
             <div class="header">KANO STATE INTERNAL REVENUE SERVICE</div>
             <div class="watermark"></div>
             <div class="content">
-                <div class="logo-container">
+                <div class="logo-container mt-3">
                     <img src="kirslogo.jfif" alt="KIRS Logo" class="logo">
                 </div>
                 <img src="" alt="QR Code" class="qr-code" id="employee-qr">
@@ -245,102 +245,104 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const employeeId = urlParams.get('id');
-        
-        if (!employeeId) {
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const employeeId = urlParams.get('id');
+    
+    if (!employeeId) {
+        document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('error-message').style.display = 'block';
+        document.getElementById('error-text').textContent = 'No employee ID provided.';
+        return;
+    }
+    
+    fetch(`/api/employees/${employeeId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Employee not found');
+            }
+            return response.json();
+        })
+        .then(employee => {
+            // Format employee name and rank
+            const formattedName = `${employee.first_name} ${employee.surname}`.trim().toUpperCase();
+            const formattedRank = employee.rank
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ')
+                .trim();
+            
+            // Set employee data
+            document.getElementById('employee-name').textContent = formattedName;
+            document.getElementById('employee-rank').textContent = formattedRank;
+            document.getElementById('employee-psn').textContent = employee.psn_number.trim().toUpperCase();
+            
+            // Set profile picture
+            if (employee.picture) {
+                document.getElementById('employee-image').src = employee.picture;
+            }
+            
+            // Fetch QR code from database
+            if (employee.qr_code) {
+                document.getElementById('employee-qr').src = employee.qr_code;
+            }
+            
+            // Set page title
+            document.title = `${formattedName} - KIRS ID Card`;
+            document.getElementById('page-title').textContent = `${formattedName} - KIRS ID Card`;
+            
+            // Show ID card and actions
+            document.getElementById('loading-message').style.display = 'none';
+            document.getElementById('card-container').style.display = 'flex';
+            document.getElementById('actions').style.display = 'flex';
+        })
+        .catch(error => {
+            console.error('Error:', error);
             document.getElementById('loading-message').style.display = 'none';
             document.getElementById('error-message').style.display = 'block';
-            document.getElementById('error-text').textContent = 'No employee ID provided.';
-            return;
-        }
+            document.getElementById('error-text').textContent = 'Employee not found or error loading data.';
+        });
+    
+    // Download button handler
+    document.getElementById('download-button').addEventListener('click', function() {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '20px';
+        container.style.background = 'white';
+        container.style.padding = '20px';
         
-        fetch(`/api/employees/${employeeId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Employee not found');
-                }
-                return response.json();
-            })
-            .then(employee => {
-                // Format employee name and rank
-                const formattedName = `${employee.first_name} ${employee.surname}`.trim().toUpperCase();
-                const formattedRank = employee.rank
-                    .split(' ')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                    .join(' ')
-                    .trim();
-                
-                // Set employee data
-                document.getElementById('employee-name').textContent = formattedName;
-                document.getElementById('employee-rank').textContent = formattedRank;
-                document.getElementById('employee-psn').textContent = employee.psn_number.trim().toUpperCase();
-                
-                // Set profile picture
-                if (employee.picture) {
-                    document.getElementById('employee-image').src = employee.picture;
-                }
-                
-                // Generate QR code for contact page
-                const qrCodeUrl = `/api/qr-code?url=${encodeURIComponent(window.location.origin + '/contact.html?id=' + employee.psn_number)}`;
-                document.getElementById('employee-qr').src = qrCodeUrl;
-                
-                // Set page title
-                document.title = `${formattedName} - KIRS ID Card`;
-                document.getElementById('page-title').textContent = `${formattedName} - KIRS ID Card`;
-                
-                // Show ID card and actions
-                document.getElementById('loading-message').style.display = 'none';
-                document.getElementById('card-container').style.display = 'flex';
-                document.getElementById('actions').style.display = 'flex';
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('loading-message').style.display = 'none';
-                document.getElementById('error-message').style.display = 'block';
-                document.getElementById('error-text').textContent = 'Employee not found or error loading data.';
-            });
+        const frontCard = document.getElementById('front-card').cloneNode(true);
+        const backCard = document.getElementById('back-card').cloneNode(true);
         
-        // Download button handler
-        document.getElementById('download-button').addEventListener('click', function() {
-            const container = document.createElement('div');
-            container.style.display = 'flex';
-            container.style.flexDirection = 'column';
-            container.style.gap = '20px';
-            container.style.background = 'white';
-            container.style.padding = '20px';
+        container.appendChild(frontCard);
+        container.appendChild(backCard);
+        document.body.appendChild(container);
+        
+        html2canvas(container, {
+            scale: 3,
+            backgroundColor: 'white',
+            useCORS: true,
+            allowTaint: false
+        }).then(canvas => {
+            const dataURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            const employeeName = document.getElementById('employee-name').textContent;
+            link.download = `KIRS_ID_Card_${employeeName.replace(/\s+/g, '_')}.png`;
             
-            const frontCard = document.getElementById('front-card').cloneNode(true);
-            const backCard = document.getElementById('back-card').cloneNode(true);
+            document.body.appendChild(link);
+            link.click();
             
-            container.appendChild(frontCard);
-            container.appendChild(backCard);
-            document.body.appendChild(container);
-            
-            html2canvas(container, {
-                scale: 3,
-                backgroundColor: 'white',
-                useCORS: true,
-                allowTaint: false
-            }).then(canvas => {
-                const dataURL = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.href = dataURL;
-                const employeeName = document.getElementById('employee-name').textContent;
-                link.download = `KIRS_ID_Card_${employeeName.replace(/\s+/g, '_')}.png`;
-                
-                document.body.appendChild(link);
-                link.click();
-                
-                document.body.removeChild(link);
-                document.body.removeChild(container);
-            }).catch(error => {
-                console.error('Error generating image:', error);
-                alert('There was an error generating the image. Please try again.');
-            });
+            document.body.removeChild(link);
+            document.body.removeChild(container);
+        }).catch(error => {
+            console.error('Error generating image:', error);
+            alert('There was an error generating the image. Please try again.');
         });
     });
+});
+
 </script>
 </body>
 </html>
