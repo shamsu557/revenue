@@ -463,7 +463,7 @@ app.post('/api/employees', isAuthenticated, upload.single('picture'), (req, res)
     }
 
     // Generate QR Code
-    const contactPageUrl = `contact.html?id=${psnNumber}`; // Reference contact page directly
+   const contactPageUrl = `https://revenue-2egg.onrender.com/contact.html?id=${psnNumber}`; // Reference contact page directly
     const qrCodeFilename = `${Date.now()}-qr.png`;
 
     qrcode.toFile(path.join(__dirname, qrCodeFilename), contactPageUrl, (err) => {
