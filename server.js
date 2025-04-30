@@ -463,7 +463,7 @@ app.post('/api/employees', isAuthenticated, upload.single('picture'), (req, res)
     }
 
     // Generate QR Code
-   const contactPageUrl = `https://revenue-2egg.onrender.com/contact.html?id=${psnNumber}`; // Reference contact page directly
+    const contactPageUrl = `https://revenue-2egg.onrender.com/contact.html?id=${psnNumber}`; // Reference contact page directly
     const qrCodeFilename = `${Date.now()}-qr.png`;
 
     qrcode.toFile(path.join(__dirname, qrCodeFilename), contactPageUrl, (err) => {
@@ -547,71 +547,72 @@ app.get('/api/employees/:identifier', (req, res) => {
 app.put('/api/employees/:id', isAuthenticated, upload.single('picture'), (req, res) => {
   const employeeId = req.params.id;
   const { firstName, surname, otherName, rank, psnNumber, phoneNumber } = req.body;
-  const pictureFilename = req.file ? req.file.filename : null; // Get the new picture filename
+  const pictureFilename = req.file ? req.file.filename : null;
 
   if (!firstName || !surname || !rank || !psnNumber || !phoneNumber) {
     return res.status(400).json({ error: 'First name, surname, rank, PSN number, and phone number are required' });
   }
 
-  // Check if another employee has this phone number
+  // Check for existing phone number conflict
   db.query('SELECT * FROM employees WHERE phone_number = ? AND id != ?', [phoneNumber, employeeId], (err, results) => {
-    if (err) {
-      console.error('Error checking for existing employee by phone:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    if (results.length > 0) return res.status(409).json({ error: 'Another employee with this phone number already exists' });
 
-    if (results.length > 0) {
-      return res.status(409).json({ error: 'Another employee with this phone number already exists' });
-    }
-
-    // Check if another employee has this PSN number
+    // Check for existing PSN number conflict
     db.query('SELECT * FROM employees WHERE psn_number = ? AND id != ?', [psnNumber, employeeId], (err, results) => {
-      if (err) {
-        console.error('Error checking for existing employee by PSN:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-
-      if (results.length > 0) {
-        return res.status(409).json({ error: 'Another employee with this PSN number already exists' });
-      }
+      if (err) return res.status(500).json({ error: 'Internal server error' });
+      if (results.length > 0) return res.status(409).json({ error: 'Another employee with this PSN number already exists' });
 
       // Fetch existing employee data
-      db.query('SELECT picture FROM employees WHERE id = ?', [employeeId], (err, result) => {
-        if (err) {
-          console.error('Error retrieving existing employee picture:', err);
-          return res.status(500).json({ error: 'Internal server error' });
+      db.query('SELECT picture, psn_number, qr_code FROM employees WHERE id = ?', [employeeId], (err, result) => {
+        if (err) return res.status(500).json({ error: 'Internal server error' });
+        if (!result || result.length === 0) return res.status(404).json({ error: 'Employee not found' });
+
+        const existing = result[0];
+        const oldPicture = existing.picture;
+        const oldQR = existing.qr_code;
+        const oldPSN = existing.psn_number;
+
+        const finalPicture = pictureFilename || oldPicture;
+
+        // Check if PSN number has changed — regenerate QR if needed
+        if (oldPSN !== psnNumber) {
+          const qrCodeFilename = `${Date.now()}-qr.png`;
+          const contactPageUrl = `https://revenue-2egg.onrender.com/contact.html?id=${psnNumber}`;
+
+          qrcode.toFile(path.join(__dirname, qrCodeFilename), contactPageUrl, (err) => {
+            if (err) return res.status(500).json({ error: 'Failed to generate new QR code' });
+
+            updateEmployee(qrCodeFilename);
+          });
+        } else {
+          updateEmployee(oldQR);
         }
 
-        const existingPicture = result[0]?.picture; // Get the existing picture filename
+        // Encapsulated update logic
+        function updateEmployee(qrCodeFilename) {
+          const employee = {
+            first_name: firstName,
+            surname,
+            other_name: otherName || null,
+            rank,
+            psn_number: psnNumber,
+            phone_number: phoneNumber,
+            picture: finalPicture,
+            qr_code: qrCodeFilename
+          };
 
-        const employee = {
-          first_name: firstName,
-          surname,
-          other_name: otherName || null,
-          rank,
-          psn_number: psnNumber,
-          phone_number: phoneNumber,
-          picture: pictureFilename || existingPicture // Keep old picture if no new one is uploaded
-        };
+          db.query('UPDATE employees SET ? WHERE id = ?', [employee, employeeId], (err, result) => {
+            if (err) return res.status(500).json({ error: 'Internal server error' });
+            if (result.affectedRows === 0) return res.status(404).json({ error: 'Employee not found' });
 
-        // Update employee data in the database
-        db.query('UPDATE employees SET ? WHERE id = ?', [employee, employeeId], (err, result) => {
-          if (err) {
-            console.error('Error updating employee:', err);
-            return res.status(500).json({ error: 'Internal server error' });
-          }
-
-          if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Employee not found' });
-          }
-
-          res.json({ id: employeeId, ...employee });
-        });
+            res.json({ id: employeeId, ...employee });
+          });
+        }
       });
     });
   });
 });
-
 
 // Delete employee
 app.delete('/api/employees/:id', isAuthenticated, (req, res) => {
