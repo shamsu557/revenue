@@ -326,7 +326,7 @@
             return response.json();
         })
         .then(employee => {
-            const formattedName = `${employee.first_name} ${employee.surname}`.trim().toUpperCase();
+            const formattedName = `${employee.first_name} ${employee.other_name ? employee.other_name + ' ' : ''}${employee.surname}`.trim().toUpperCase();
             const formattedRank = employee.rank
                 .split(' ')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
