@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,11 +10,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
-    background-color: #eef1f0;
-    font-family: 'Arial', sans-serif;
-    padding: 20px;
-}
-
+            background-color: #f5f5f5;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
         
         .container {
             max-width: 1200px;
@@ -36,7 +36,7 @@
             overflow: hidden;
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
             background: #ffffff;
-            border: 3px solid #008000;
+            border: 2px solid #008000;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -46,17 +46,18 @@
         }
         
         .header {
-  background: linear-gradient(to right, #008000, #004d00);  /* Green to dark green */
-  color: white;
-  font-weight: bold;
-  font-size: 11px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 6px;
-}
-
+            background-color: #008000;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            padding: 5px;
+            font-size: 12px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
         .content {
             padding: 10px;
             text-align: center;
@@ -71,7 +72,7 @@
         }
         
         .footer {
-            background: linear-gradient(to right , #004d00, #008000);  /* Green to dark green */
+            background-color: #008000;
             color: white;
             padding: 5px;
             text-align: center;
@@ -89,14 +90,16 @@
         }
         
         .profile-pic {
-  width: 100px; /* increased from 80px */
-  height: 120px; /* increased from 100px */
-  object-fit: cover;
-  border-radius: 4px;
-  border: 2px solid #006400;
-  margin-left: 1px;
-}
-
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid #008000;
+            margin: 2px auto 5px;
+            transform: scale(1.4 ); /* Zoom effect */
+        }
+        
+        
         .qr-code {
             width: 60px;
             height: 60px;
@@ -121,18 +124,11 @@
         }
         
         .card-info h4 {
-    margin: 0;
-    font-size: 14px;
-    color: #333333;
-    font-weight: bold;
-}
-
-.card-info .position {
-    color: #006400;
-    font-weight: bold;
-    font-size: 12px;
-}
-
+            margin: 0;
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
         
         .card-info p {
             margin: 2px 0;
@@ -190,35 +186,7 @@
                 display: none;
             }
         }
-        .header img.logo-small {
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 7px;
-}
-.identity-label {
-      text-align: center;
-      font-weight: bold;
-      font-size: 12px;
-      margin-bottom: 6px;
-      text-decoration: underline;
-    }
-    .pale-red-line {
-  border: 3px;
-  height: 1px;
-  background-color: #085214; /* pale red */
-  margin: 8px 0;
-  font-weight: bold;
-
-}
-
-.issue-date {
-  font-size: 0.7rem;
-  color: #2c2515;
-  font-weight: bold;
-}
-   </style>
+    </style>
 </head>
 <body>
 <div class="container">
@@ -233,62 +201,34 @@
     <h2 class="text-center mb-4" id="page-title">KIRS ID Card</h2>
     
     <div class="card-container" id="card-container" style="display: none;">
-        <div class="container">
-            <h2 class="text-center mb-4">KIRS ID Card</h2>
-            <div class="card-container">
-          
-              <!-- Front of ID Card -->
-              <div class="kirs-card" id="front-card">
-                <div class="header">
-                  <img src="kirslogo.jfif" alt="KIRS Logo" class="logo-small">
-                  KANO STATE INTERNAL REVENUE SERVICE (KIRS)
+        <!-- Front of ID Card -->
+        <div class="kirs-card" id="front-card">
+            <div class="header mb-1">KANO STATE INTERNAL REVENUE SERVICE (KIRS)</div>
+            <div class="watermark"></div>
+            <div class="content">
+                <img src="https://via.placeholder.com/70" alt="Profile Picture" class="profile-pic mt-4 mb-1" id="employee-image">
+                <div class="card-info mt-2">
+                    <h4 id="employee-name" class="mt-1">EMPLOYEE NAME</h4>
+                    <p class="position" id="employee-rank" class="mt-0">Position</p>
+                    <p><i class="fas fa-id-card mb-2"></i> <span id="employee-psn">PSN12345</span></p>
                 </div>
-                <div class="watermark"></div>
-                <div class="content">
-                  <div class="identity-label">STAFF I.D CARD</div>
-                  <div class="row">
-                    <div class="col-4 d-flex align-items-center justify-content-center">
-                      <img src="https://via.placeholder.com/70" alt="Profile Picture" class="profile-pic" id="employee-image">
-                    </div>
-                    <div class="col-8 mt-3">
-                      <div class="card-info">
-                        <h4 id="employee-name">EMPLOYEE NAME</h4>
-                        <p class="position" id="employee-rank">Position</p>
-                        <p><i class="fas fa-id-card mt-1"></i> <span id="employee-psn">PSN12345</span></p>
-                        <hr class="pale-red-line mt-3">
-                        <p class="issue-date">Issued: May, 2025</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="footer">
-                  <i class="fas fa-globe"></i> <a href="http://www.kirs.gov.ng" class="text-white text-decoration-none">www.kirs.gov.ng</a>
-                </div>
-              </div>
+            </div>
+            <div class="footer">
+                <i class="fas fa-globe"></i> <a href="http://www.kirs.gov.ng">www.kirs.gov.ng</a>
+            </div>
+        </div>
 
         <!-- Back of ID Card -->
         <div class="kirs-card" id="back-card">
-            <div class="header">
-                <img src="kirslogo.jfif" alt="KIRS Logo" class="logo-small">
-                KANO STATE INTERNAL REVENUE SERVICE (KIRS)
-              </div>
+            <div class="header">KANO STATE INTERNAL REVENUE SERVICE</div>
             <div class="watermark"></div>
             <div class="content">
-                <img src="" alt="QR Code" class="qr-code mt-1" id="employee-qr">
-                <p class="mt-0" style="font-size: 8px;">
-                    This card is the property of <b>Kano State Internal Revenue Service (KIRS)</b>. Unauthorized use is prohibited. If found, return to the nearest KIRS office.
-                  </p>
-                  <!-- Authorised Signature Section -->
-<div class="signature-section" style="margin-top: 0; text-align: center;">
-    <div style="height: 12px; margin-bottom: 0;">
-        <img src="signature.jfif" alt="Signature" style="height: 15px;">
-    </div>
-    <hr style="width: 25%; margin: 1px auto;">
-    <small style="font-size: 6.5px; font-weight: bold;">Authorised Signature</small>
-</div>
-</div>
-
-
+                <div class="logo-container mt-3">
+                    <img src="kirslogo.jfif" alt="KIRS Logo" class="logo">
+                </div>
+                <img src="" alt="QR Code" class="qr-code" id="employee-qr">
+                <p>This card is the property of <b>Kano State Internal Revenue Service (KIRS)</b>. Unauthorized use is prohibited. If found, return to the nearest KIRS office.</p>
+            </div>
             <div class="footer">
                 <i class="fas fa-envelope"></i> info@kirs.gov.ng |
                 <i class="fas fa-globe"></i> <a href="http://www.kirs.gov.ng">www.kirs.gov.ng</a>
